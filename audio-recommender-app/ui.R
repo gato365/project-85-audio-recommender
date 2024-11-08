@@ -9,25 +9,40 @@
 
 library(shiny)
 
-# Define UI for application that draws a histogram
+# ui.R
 fluidPage(
-
-    # Application title
-    titlePanel("Old Faithful Geyser Data"),
-
-    # Sidebar with a slider input for number of bins
-    sidebarLayout(
-        sidebarPanel(
-            sliderInput("bins",
-                        "Number of bins:",
-                        min = 1,
-                        max = 50,
-                        value = 30)
-        ),
-
-        # Show a plot of the generated distribution
-        mainPanel(
-            plotOutput("distPlot")
-        )
+  titlePanel("Audio Recommender"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      # Genre input
+      textInput("genre", 
+                "Enter Genre:", 
+                value = "rock"),
+      
+      # Submit button
+      actionButton("submit", 
+                   "Get Artists",
+                   class = "btn-primary",
+                   width = "100%"),
+      
+      # Helper text
+      helpText("Enter a music genre to discover artists.")
+    ),
+    
+    mainPanel(
+      # Status message
+      uiOutput("status_message"),
+      
+      # Results panel
+      wellPanel(
+        h3("Artists in Selected Genre"),
+        # Table output for artists
+        DT::dataTableOutput("artists_table"),
+        
+        # Error message space
+        textOutput("error_message")
+      )
     )
+  )
 )
