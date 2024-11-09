@@ -1,19 +1,12 @@
-#
-# This is the user-interface definition of a Shiny web application. You can
-# run the application by clicking 'Run App' above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    https://shiny.posit.co/
-#
-
 library(shiny)
 library(plotly)
-# ui.R
+library(DT)
+library(bslib)
+
 fluidPage(
-  theme = bslib::bs_theme(version = 4),
+  theme = bs_theme(version = 4),
   
-  titlePanel("Spotify Genre Explorer & Track Analysis"),
+  titlePanel("Spotify Genre Explorer & Mood Analysis"),
   
   sidebarLayout(
     sidebarPanel(
@@ -22,37 +15,70 @@ fluidPage(
                 value = "rock",
                 placeholder = "e.g., rock, jazz, hip-hop"),
       
+      # Add mood selection
+      selectInput("mood",
+                  "Select Mood:",
+                  choices = c("happy", "sad", "chill", "angry"),
+                  selected = "happy"),
+      
       actionButton("submit", 
                    "Analyze Genre",
                    class = "btn-primary w-100 mb-3"),
       
       hr(),
       
-      # Display analysis stats
-      uiOutput("analysis_stats"),
+      # Display mood and genre text
+      textOutput("moodText"),
+      textOutput("genreText"),
+      
+      hr(),
+      
+      # Add cluster analysis button
+      actionButton("showCluster",
+                   "Show Cluster Analysis",
+                   class = "btn-info w-100 mb-3"),
       
       # Help text
       helpText("This app analyzes artists and tracks for a given genre,",
-               "including audio features and mood analysis.")
+               "clustering them by mood based on audio features.")
     ),
     
     mainPanel(
       tabsetPanel(
-        tabPanel("Artists",
-                 uiOutput("status_message"),
-                 DT::dataTableOutput("artists_table")
+        tabPanel("Mood Analysis",
+                 br(),
+                 # Main plot showing mood vs valence
+                 plotlyOutput("spotifyPlot", height = "400px"),
+                 br(),
+                 # Spotify track embeddings
+                 uiOutput("spotifyTracks")
         ),
-        tabPanel("Top Tracks",
-                 plotlyOutput("mood_plot"),
-                 DT::dataTableOutput("tracks_table")
+        
+        tabPanel("Cluster Analysis",
+                 br(),
+                 # Cluster visualization
+                 plotOutput("clusterPlot", height = "500px"),
+                 br(),
+                 # Data table for cluster information
+                 DT::dataTableOutput("clusterTable")
         ),
+        
         tabPanel("Audio Features",
-                 plotlyOutput("audio_features_plot"),
+                 br(),
+                 # Keep your existing audio features content
                  selectInput("feature_view", 
                              "Select Feature to View:",
-                             choices = c("danceability", "energy", "tempo", "valence", "loudness")),
-                 plotlyOutput("feature_distribution")
-        )
+                             choices = c("danceability", "energy", 
+                                         "tempo", "valence", "loudness")),
+                 plotlyOutput("feature_distribution"),
+                 br(),
+                 DT::dataTableOutput("featuresTable")
+        ),
+        
+        tabPanel("Track Details",
+                 br(),
+                 # Detailed track information
+                 DT::dataTableOutput("tracksTable"))
       )
     )
   )

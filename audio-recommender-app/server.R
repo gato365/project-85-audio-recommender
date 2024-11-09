@@ -14,7 +14,7 @@ function(input, output, session) {
   ## Loading state
   loading <- reactiveVal(FALSE)
   
-  ## Spotify data reactive
+  ## Backend Data Transformation: Spotify data reactive
   spotify_data <- reactive({
     req(input$submit)
     loading(TRUE)
@@ -46,7 +46,7 @@ function(input, output, session) {
     return(result)
   })
   
-  ## Processed tracks reactive
+  ## Backend Data Transformation: Processed tracks reactive
   processed_tracks <- reactive({
     req(spotify_data())
     
@@ -79,6 +79,55 @@ function(input, output, session) {
       })
   })
   
+  
+  
+  ## Statistical Analysis: Cluster Analysis
+  clustered_tracks <- reactive({
+    req(processed_tracks())
+    
+    # Prepare data for clustering
+    cluster_data <- processed_tracks() %>%
+      select(danceability, energy, valence, overall_mood) %>%
+      scale()
+    
+    # Perform k-means clustering
+    set.seed(123)
+    kmeans_result <- kmeans(cluster_data, centers = 4)
+    
+    # Add cluster assignments
+    processed_tracks() %>%
+      mutate(
+        cluster = kmeans_result$cluster,
+        mood_type = case_when(
+          cluster == 1 ~ "happy",
+          cluster == 2 ~ "sad",
+          cluster == 3 ~ "chill",
+          cluster == 4 ~ "angry"
+        )
+      )
+  })
+  
+  
+  ## Backend Data Transformation: Filtered Tracks
+  filtered_tracks <- reactive({
+    req(clustered_tracks(), input$mood)
+    
+    clustered_tracks() %>%
+      filter(mood_type == input$mood) %>%
+      arrange(desc(overall_mood)) %>%
+      head(10)
+  })
+  
+  
+  
+  
+  
+  
+  
+  
+  ##-----------------------------------------------------
+  ## Outputs
+  ##-----------------------------------------------------
   ## Output: Status Message
   output$status_message <- renderUI({
     if(loading()) {
@@ -89,6 +138,112 @@ function(input, output, session) {
       )
     }
   })
+  
+  ## Output: Main scatter plot
+  output$spotifyPlot <- renderPlotly({
+    req(filtered_tracks())
+    
+    p <- ggplot(filtered_tracks(), 
+                aes(x = valence, y = overall_mood, text = name)) +
+      geom_point(aes(color = name)) +
+      geom_vline(xintercept = 0.5) +
+      geom_hline(yintercept = 0.5) +
+      labs(x = "Valence", y = "Overall Mood", color = "Song Title") +
+      theme_minimal() +
+      scale_x_continuous(limits = c(0, 1)) +
+      scale_y_continuous(limits = c(0, 1))
+    
+    ggplotly(p, tooltip = "text") %>%
+      layout(
+        showlegend = TRUE,
+        legend = list(
+          orientation = "h",
+          xanchor = "center",
+          x = 0.5,
+          y = -0.2
+        )
+      )
+  })
+  
+  ## Output: Cluster plot
+  output$clusterPlot <- renderPlot({
+    req(clustered_tracks())
+    
+    cluster_data <- clustered_tracks() %>%
+      select(danceability, energy, valence, overall_mood)
+    
+    fviz_cluster(
+      list(
+        data = as.matrix(cluster_data),
+        cluster = clustered_tracks()$cluster
+      ),
+      geom = "point",
+      main = "Song Clusters by Audio Features"
+    )
+  })
+  
+  
+  ## Output: Spotify Tracks Images
+  output$spotifyTracks <- renderUI({
+    req(filtered_tracks())
+    
+    spotifyURIs <- filtered_tracks()$uri
+    
+    trackEmbeds <- map(spotifyURIs, function(uri) {
+      spotifyEmbedURL <- sprintf(
+        "https://open.spotify.com/embed/track/%s",
+        gsub("spotify:track:", "", uri)
+      )
+      tags$div(
+        tags$iframe(
+          src = spotifyEmbedURL,
+          width = "300",
+          height = "80",
+          frameborder = "0",
+          allowtransparency = "true",
+          allow = "encrypted-media"
+        ),
+        style = "padding-bottom: 20px;"
+      )
+    })
+    
+    do.call(tagList, trackEmbeds)
+  })
+  
+  ## Output: Selected Mood Text
+  output$moodText <- renderText({
+    paste("Selected Mood:", input$mood)
+  })
+  
+  ## Output: Selected Genre Text
+  output$genreText <- renderText({
+    paste("Selected Genre:", input$genre)
+  })
+  
+  
+  
+  
+  ## Output: Analysis Stats
+  observe({
+    req(input$submit)
+    if (is.null(filtered_tracks()) || nrow(filtered_tracks()) == 0) {
+      showNotification("No tracks found for the selected criteria", type = "warning")
+    }
+  })
+  
+  
+  ## Old :Not going to use
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   
   ## Output: Artist Table
   output$artists_table <- DT::renderDataTable({
