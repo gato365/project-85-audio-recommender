@@ -8,40 +8,51 @@
 #
 
 library(shiny)
-
+library(plotly)
 # ui.R
 fluidPage(
-  titlePanel("Audio Recommender"),
+  theme = bslib::bs_theme(version = 4),
+  
+  titlePanel("Spotify Genre Explorer & Track Analysis"),
   
   sidebarLayout(
     sidebarPanel(
-      # Genre input
       textInput("genre", 
-                "Enter Genre:", 
-                value = "rock"),
+                "Enter Genre:",
+                value = "rock",
+                placeholder = "e.g., rock, jazz, hip-hop"),
       
-      # Submit button
       actionButton("submit", 
-                   "Get Artists",
-                   class = "btn-primary",
-                   width = "100%"),
+                   "Analyze Genre",
+                   class = "btn-primary w-100 mb-3"),
       
-      # Helper text
-      helpText("Enter a music genre to discover artists.")
+      hr(),
+      
+      # Display analysis stats
+      uiOutput("analysis_stats"),
+      
+      # Help text
+      helpText("This app analyzes artists and tracks for a given genre,",
+               "including audio features and mood analysis.")
     ),
     
     mainPanel(
-      # Status message
-      uiOutput("status_message"),
-      
-      # Results panel
-      wellPanel(
-        h3("Artists in Selected Genre"),
-        # Table output for artists
-        DT::dataTableOutput("artists_table"),
-        
-        # Error message space
-        textOutput("error_message")
+      tabsetPanel(
+        tabPanel("Artists",
+                 uiOutput("status_message"),
+                 DT::dataTableOutput("artists_table")
+        ),
+        tabPanel("Top Tracks",
+                 plotlyOutput("mood_plot"),
+                 DT::dataTableOutput("tracks_table")
+        ),
+        tabPanel("Audio Features",
+                 plotlyOutput("audio_features_plot"),
+                 selectInput("feature_view", 
+                             "Select Feature to View:",
+                             choices = c("danceability", "energy", "tempo", "valence", "loudness")),
+                 plotlyOutput("feature_distribution")
+        )
       )
     )
   )
